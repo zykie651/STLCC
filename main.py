@@ -90,15 +90,13 @@ print(date)
 print('#######################################')
 print(df)
 
-# Write the dataframe to an Excel file
-with pd.ExcelWriter('stlcc.xlsx') as writer:
-    df.to_excel(writer, index=False)
+# Write the dataframe to a Markdown file
+with open('output/agenda_data.md', 'w', encoding='utf-8') as f:
+    f.write(df.to_markdown(index=False))
 
 # Stats function
 def stats(df):
     df['Amount'] = df['Amount'].str.replace(',', '').astype(int)
     grouped = df.groupby('Council Member').apply(lambda x: x.drop_duplicates(subset=['Amount'])).reset_index(drop=True)
     total_amounts = grouped.groupby('Council Member')['Amount'].sum().map('${:,.2f}'.format)
-    stats = pd.DataFrame({'Total Amount': total_amounts})
-    print(stats)
-stats(df)
+    stats = pd
