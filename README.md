@@ -2,11 +2,6 @@
 
 This script extracts bill information from the STL County Council Meeting Agendas and saves it to an Excel file and creates a markdown file.
 
-## Prerequisites
-
-- Python 3.6 or higher
-- Required libraries: pandas, requests, beautifulsoup4
-
 ## How to run
 
 1. Clone the repository
