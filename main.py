@@ -1,85 +1,118 @@
-import requests
-from bs4 import BeautifulSoup
-import pandas as pd
-import os
 import re
+import pandas as pd
+import BILLGRAB
+import requests
+import os
 
-URL = 'https://stlouisco.civicweb.net/document/111851/'
+#Agenda URL 
+url = 'https://stlouisco.civicweb.net/document/118713/'
 
-def extract_spans(url):
+def find_date_in_html_page(url):
+    # Make a request to the webpage and get the HTML content
     response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    spans = soup.find_all('span')
-    return spans, soup
+    html = response.text
 
-def write_spans_to_txt(spans, file_name):
-    start_flag = False
-    end_flag = False
-    sections = ['PERFECTION OF BILLS', 'FINAL PASSAGE OF BILLS']
+    # Use regular expressions to find the date in the HTML content
+    pattern = r"\w+,\s\w+\s\d+,\s\d{4}\s\w+\s\d+:\d+\s\w+"
+    match = re.search(pattern, html)
 
-    with open(file_name, "w", encoding="utf8") as file:
-        for span in spans:
-            if not start_flag:
-                if span.text == sections[0]:
-                    start_flag = True
-                    sections.pop(0)
-            else:
-                if span.text == sections[0]:
-                    end_flag = True
-                    break
-                else:
-                    file.write(span.text + "\n")  # write span text to file
-
-    if not start_flag:
-        print(f'Text not found. "{sections[0]}" not found in the document.')
-    elif not end_flag:
-        print(f'Text not found. "{sections[0]}" not found in the document.')
-    else:
-        print(f'Spans written to {file_name}')
-
-def remove_duplicates(spans):
-    seen = set()
-    result = []
-    for span in spans:
-        if span.text not in seen:
-            seen.add(span.text)
-            result.append(span)
-    return result
-
-def generate_markdown_table(final_spans):
-    headers = ['Bill Number', 'Sponsor', 'Description']
-    table = [headers]
-
-    for span in final_spans:
-        row = span.text.split('\n', 2)
-        if len(row) == 3:
-            table.append(row)
-
-    markdown_table = pd.DataFrame(table[1:], columns=table[0]).to_markdown(index=False)
-    return markdown_table
-
-def extract_date(soup):
-    date_string = soup.find('div', {'class': 'lblTitle'}).text
-    match = re.search(r'\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|(?:Nov|Dec)(?:ember)?)\s+\d{1,2},\s+\d{4}\b', date_string)
+    # If a match is found, return the date string. Otherwise, return None.
     if match:
         return match.group()
-    return None
+    else:
+        return None
 
-if __name__ == '__main__':
-    spans, soup = extract_spans(URL)
-    write_spans_to_txt(spans, 'perfectionbills.txt')
-    final_spans = remove_duplicates(spans)
-    write_spans_to_txt(final_spans, 'finalbills.txt')
+def generate_markdown_table(df):
+    return df.to_markdown(index=False)
 
-    # Create the output directory if it doesn't exist
-    os.makedirs('output', exist_ok=True)
+def write_output_to_markdown_file(output, file_name):
+    with open(file_name, 'a', encoding='utf-8') as f:
+        f.write(output)
+        f.write('\n------\n')
 
-    # Extract the date from the agenda URL
-    date = extract_date(soup)
+date = find_date_in_html_page(url)
 
-    # Write the Markdown table to a file
-    with open('output/agenda_data.md', 'a', encoding='utf-8') as f:
-        if date:
-            f.write(f'\nDate: {date}\n')
-        f.write(generate_markdown_table(final_spans))
-        f.write('\n------\n')  # Add a separator between each run
+b = BILLGRAB
+b.PERFECTBILLLGRAB(url)
+b.FINALBILLGRAB(url)
+
+with open('bills.txt',encoding="utf8") as f:
+    text = f.read()
+
+bill_no_pattern = r'BILL NO\. (\d+), (\d+), INTRODUCED BY COUNCIL MEMBER(?:S)? ((?:\w+)(?: AND \w+)*)?, ENTITLED:'
+amount_pattern = r'\$([\d,]+)'
+purpose_pattern = r'FOR SUPPORT OF (.+)[;|\.]'
+source_pattern = r"FROM (?:THE )?([A-Z\s]+)"
+
+bill_no_regex = re.compile(bill_no_pattern)
+amount_regex = re.compile(amount_pattern)
+purpose_regex = re.compile(purpose_pattern)
+source_regex = re.compile(source_pattern)
+
+bill_no = []
+council_member = []
+amount = []
+purpose = []
+source = []
+
+for bill_text in text.split('Bill No.'):
+    bill_match = bill_no_regex.search(bill_text)
+    if bill_match:
+        bill_no.append(bill_match.group(1))
+        council_member.append(bill_match.group(3))
+
+        amount_match = amount_regex.search(bill_text)
+        if amount_match:
+            amount.append(amount_match.group(1))
+        else:
+            amount.append('')
+
+        purpose_match = purpose_regex.search(bill_text)
+        if purpose_match:
+            purpose.append(purpose_match.group(1))
+        else:
+            purpose.append('')
+
+        source_match = source_regex.search(bill_text)
+        if source_match:
+            source.append(source_match.group(1))
+        else:
+            source.append('')
+
+data = {'Bill Number': bill_no, 
+        'Council Member': council_member, 
+        'Amount': amount, 
+        'Purpose': purpose, 
+        'Source': source}
+df = pd.DataFrame(data)
+
+df = df[df['Amount'] != '']
+
+output = f'#######################################\nThis is the STL County Council Meeting for:\n{date}\n#######################################\n'
+output += generate_markdown_table(df)
+
+print(output)
+
+with pd.ExcelWriter('stlcc.xlsx') as writer:
+    df.to_excel(writer, index=False)
+
+def stats(df):
+    df['Amount'] = df['Amount'].str.replace(',', '').astype(int)
+    grouped = df.groupby('Council Member').apply(lambda x: x.drop_duplicates(subset=['Amount'])).reset_index(drop=True)
+    total_amounts = grouped.groupby('Council Member')['Amount'].sum().map('${:,.2f}'.format)
+    stats = pd.DataFrame({'Total Amount': total_amounts})
+    print(stats)
+
+stats(df)
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+
+# Create the output directory if it doesn't exist
+os.makedirs('output', exist_ok=True)
+
+# Write the output to the markdown file
+write_output_to_markdown_file(output, 'output/agenda_data.md')
