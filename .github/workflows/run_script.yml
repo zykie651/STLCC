@@ -15,6 +15,9 @@ jobs:
       with:
         python-version: 3.x
         
+    - name: Install build dependencies
+      run: sudo apt-get install -y libblas-dev liblapack-dev gfortran
+      
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
