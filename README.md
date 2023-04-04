@@ -2,6 +2,8 @@
 
 This script extracts bill information from the STL County Council Meeting Agendas and saves it to an Excel file and creates a markdown file.
 
+It attempts to create this using some simple regex for extraction. It is not perfect but does an okay job at grabbing the information.
+
 ## How to run
 
 1. Clone the repository
