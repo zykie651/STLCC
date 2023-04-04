@@ -9,6 +9,13 @@ It attempts to create this using some simple regex for extraction. It is not per
 1. Clone the repository
 2. Install required libraries: `pip install -r requirements.txt`
 3. Run the `main.py` script: `python main.py`
+4. If so desired. Change the URL in main.py
+```python
+#Agenda URL 
+url = 'https://stlouisco.civicweb.net/document/118713/'
+```
+You can find the latest meeting from the public portal. https://stlouisco.civicweb.net/Portal/MeetingTypeList.aspx
+Find the day you want and click the "Agenda" button to get the URL.
 
 ## Example Output:
 
