@@ -2,7 +2,7 @@ import re
 import pandas as pd
 import requests
 import os
-from billgrab import PERFECTBILLLGRAB, FINALBILLGRAB
+from BILLGRAB import PERFECTBILLLGRAB, FINALBILLGRAB
 
 # Agenda URL
 url = 'https://stlouisco.civicweb.net/document/118713/'
