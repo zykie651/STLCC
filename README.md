@@ -14,8 +14,8 @@ It attempts to create this using some simple regex for extraction. It is not per
 #Agenda URL 
 url = 'https://stlouisco.civicweb.net/document/118713/'
 ```
-You can find the latest meeting from the public portal. https://stlouisco.civicweb.net/Portal/MeetingTypeList.aspx
-Find the day you want and click the "Agenda" button to get the URL.
+* You can find the latest meeting from the public portal. https://stlouisco.civicweb.net/Portal/MeetingTypeList.aspx
+* Find the day you want and click the "Agenda" button to get the URL.
 
 ## Example Output:
 
