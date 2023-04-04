@@ -84,11 +84,11 @@ df = pd.DataFrame(data)
 # Drop rows with empty amount
 df = df[df['Amount'] != '']
 
-print('#######################################')
-print('This is the STL County Council Meeting for:')
-print(date)
-print('#######################################')
-print(df)
+#print('#######################################')
+#print('This is the STL County Council Meeting for:')
+#print(date)
+#print('#######################################')
+#print(df)
 
 # Write the dataframe to a Markdown file
 with open('output/agenda_data.md', 'w', encoding='utf-8') as f:
