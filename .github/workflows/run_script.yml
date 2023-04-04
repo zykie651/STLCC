@@ -8,12 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
-        python-version: 3.9.9
+        python-version: "3.10.0"
         
     - name: Install build dependencies
       run: sudo apt-get install -y libblas-dev liblapack-dev gfortran
@@ -27,7 +27,7 @@ jobs:
       run: python main.py
       
     - name: Upload Markdown file
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: agenda_data
         path: output/agenda_data.md
