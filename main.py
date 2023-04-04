@@ -1,102 +1,85 @@
-import re
-import pandas as pd
 import requests
+from bs4 import BeautifulSoup
+import pandas as pd
 import os
-from BILLGRAB import PERFECTBILLLGRAB, FINALBILLGRAB
+import re
 
-# Agenda URL
-url = 'https://stlouisco.civicweb.net/document/118713/'
+URL = 'https://stlouisco.civicweb.net/document/111851/'
 
-# Function to get the date for the meeting
-def find_date_in_html_page(url):
+def extract_spans(url):
     response = requests.get(url)
-    html = response.text
+    soup = BeautifulSoup(response.content, 'html.parser')
+    spans = soup.find_all('span')
+    return spans, soup
 
-    pattern = r"\w+,\s\w+\s\d+,\s\d{4}\s\w+\s\d+:\d+\s\w+"
-    match = re.search(pattern, html)
+def write_spans_to_txt(spans, file_name):
+    start_flag = False
+    end_flag = False
+    sections = ['PERFECTION OF BILLS', 'FINAL PASSAGE OF BILLS']
 
+    with open(file_name, "w", encoding="utf8") as file:
+        for span in spans:
+            if not start_flag:
+                if span.text == sections[0]:
+                    start_flag = True
+                    sections.pop(0)
+            else:
+                if span.text == sections[0]:
+                    end_flag = True
+                    break
+                else:
+                    file.write(span.text + "\n")  # write span text to file
+
+    if not start_flag:
+        print(f'Text not found. "{sections[0]}" not found in the document.')
+    elif not end_flag:
+        print(f'Text not found. "{sections[0]}" not found in the document.')
+    else:
+        print(f'Spans written to {file_name}')
+
+def remove_duplicates(spans):
+    seen = set()
+    result = []
+    for span in spans:
+        if span.text not in seen:
+            seen.add(span.text)
+            result.append(span)
+    return result
+
+def generate_markdown_table(final_spans):
+    headers = ['Bill Number', 'Sponsor', 'Description']
+    table = [headers]
+
+    for span in final_spans:
+        row = span.text.split('\n', 2)
+        if len(row) == 3:
+            table.append(row)
+
+    markdown_table = pd.DataFrame(table[1:], columns=table[0]).to_markdown(index=False)
+    return markdown_table
+
+def extract_date(soup):
+    date_string = soup.find('div', {'class': 'lblTitle'}).text
+    match = re.search(r'\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|(?:Nov|Dec)(?:ember)?)\s+\d{1,2},\s+\d{4}\b', date_string)
     if match:
         return match.group()
-    else:
-        return None
-date = find_date_in_html_page(url)
+    return None
 
-# Create a text file from the Agenda with just bill text
-PERFECTBILLLGRAB(url)
-FINALBILLGRAB(url)
+if __name__ == '__main__':
+    spans, soup = extract_spans(URL)
+    write_spans_to_txt(spans, 'perfectionbills.txt')
+    final_spans = remove_duplicates(spans)
+    write_spans_to_txt(final_spans, 'finalbills.txt')
 
-# Read text file
-with open('bills.txt', encoding="utf8") as f:
-    text = f.read()
+    # Create the output directory if it doesn't exist
+    os.makedirs('output', exist_ok=True)
 
-# Define regex patterns
-bill_no_pattern = r'BILL NO\. (\d+), (\d+), INTRODUCED BY COUNCIL MEMBER(?:S)? ((?:\w+)(?: AND \w+)*)?, ENTITLED:'
-amount_pattern = r'\$([\d,]+)'
-purpose_pattern = r'FOR SUPPORT OF (.+)[;|\.]'
-source_pattern = r"FROM (?:THE )?([A-Z\s]+)"
+    # Extract the date from the agenda URL
+    date = extract_date(soup)
 
-# Compile regex patterns
-bill_no_regex = re.compile(bill_no_pattern)
-amount_regex = re.compile(amount_pattern)
-purpose_regex = re.compile(purpose_pattern)
-source_regex = re.compile(source_pattern)
-
-# Initialize variables
-bill_no = []
-council_member = []
-amount = []
-purpose = []
-source = []
-
-# Loop through all bills in the text
-for bill_text in text.split('Bill No.'):
-    bill_match = bill_no_regex.search(bill_text)
-    if bill_match:
-        bill_no.append(bill_match.group(1))
-        council_member.append(bill_match.group(3))
-        
-        amount_match = amount_regex.search(bill_text)
-        if amount_match:
-            amount.append(amount_match.group(1))
-        else:
-            amount.append('')
-        
-        purpose_match = purpose_regex.search(bill_text)
-        if purpose_match:
-            purpose.append(purpose_match.group(1))
-        else:
-            purpose.append('')
-        
-        source_match = source_regex.search(bill_text)
-        if source_match:
-            source.append(source_match.group(1))
-        else:
-            source.append('')
-
-# Create dataframe
-data = {'Bill Number': bill_no, 
-        'Council Member': council_member, 
-        'Amount': amount, 
-        'Purpose': purpose, 
-        'Source': source}
-df = pd.DataFrame(data)
-
-# Drop rows with empty amount
-df = df[df['Amount'] != '']
-
-#print('#######################################')
-#print('This is the STL County Council Meeting for:')
-#print(date)
-#print('#######################################')
-#print(df)
-
-# Write the dataframe to a Markdown file
-with open('output/agenda_data.md', 'w', encoding='utf-8') as f:
-    f.write(df.to_markdown(index=False))
-
-# Stats function
-def stats(df):
-    df['Amount'] = df['Amount'].str.replace(',', '').astype(int)
-    grouped = df.groupby('Council Member').apply(lambda x: x.drop_duplicates(subset=['Amount'])).reset_index(drop=True)
-    total_amounts = grouped.groupby('Council Member')['Amount'].sum().map('${:,.2f}'.format)
-    stats = pd
+    # Write the Markdown table to a file
+    with open('output/agenda_data.md', 'a', encoding='utf-8') as f:
+        if date:
+            f.write(f'\nDate: {date}\n')
+        f.write(generate_markdown_table(final_spans))
+        f.write('\n------\n')  # Add a separator between each run
