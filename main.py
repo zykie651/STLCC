@@ -91,6 +91,8 @@ df = df[df['Amount'] != '']
 output = f'#######################################\nThis is the STL County Council Meeting for:\n{date}\n#######################################\n'
 output += generate_markdown_table(df)
 
+
+#Prints output - comment out if not neeeded (tshooting method)
 print(output)
 
 with pd.ExcelWriter('stlcc.xlsx') as writer:
@@ -103,6 +105,7 @@ def stats(df):
     stats = pd.DataFrame({'Total Amount': total_amounts})
     print(stats)
 
+#Prints stats - comment out if not neeeded (tshooting method)
 stats(df)
 
 def main():
